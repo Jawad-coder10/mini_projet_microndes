@@ -10,15 +10,15 @@ import numpy as np
 # ----------------------------------------------------------------------------
 @dataclass
 class Ligne:
-    ell: float = 0.3048                                   
+    ell: float = 0.3048
     L: np.ndarray = field(default_factory=lambda: np.array(
-        [[494.6, 63.3], [63.3, 494.6]]) * 1e-9)           
+        [[494.6, 63.3], [63.3, 494.6]]) * 1e-9)
     C: np.ndarray = field(default_factory=lambda: np.array(
-        [[62.8, -4.9], [-4.9, 62.8]]) * 1e-12)            
-    Rdc: float = 0.3691                                 
-    b: float = 0.01 * np.sqrt(2 * np.pi)                  
-    RS: tuple = (50.0, 100.0)                            
-    RL: tuple = (100.0, 100.0)                            
+        [[62.8, -4.9], [-4.9, 62.8]]) * 1e-12)
+    Rdc: float = 0.3691
+    b: float = 0.01 * np.sqrt(2 * np.pi)
+    RS: tuple = (50.0, 100.0)
+    RL: tuple = (100.0, 100.0)
 
 TR, TT, TD = 1.5e-9, 6.0e-9, 1.5e-9
 
@@ -38,12 +38,12 @@ NOMS = ["V1(0)", "V2(0)", "I1(0)", "I2(0)", "V1(L)", "V2(L)", "I1(L)", "I2(L)"]
 # ----------------------------------------------------------------------------
 def reponse_lmc(s, lg, VS=vs_trapeze):
     s = np.asarray(s, dtype=complex)
-    a = lg.Rdc + lg.b * np.sqrt(s)                        
+    a = lg.Rdc + lg.b * np.sqrt(s)
     Le, Lo = lg.L[0, 0] + lg.L[0, 1], lg.L[0, 0] - lg.L[0, 1]
     Ce, Co = lg.C[0, 0] + lg.C[0, 1], lg.C[0, 0] - lg.C[0, 1]
 
     def mode(Lm, Cm):
-        gam = np.sqrt(s * Cm * (a + s * Lm))              
+        gam = np.sqrt(s * Cm * (a + s * Lm))
         Zc = (a + s * Lm) / gam
         return gam, Zc
 
@@ -81,7 +81,7 @@ def reponse_lmc(s, lg, VS=vs_trapeze):
 # 3. NILT de Brancik : FFT + algorithme epsilon (portage de `niltv`)
 # ----------------------------------------------------------------------------
 def nilt(F, tm, M=256, P=2, alfa=0.0):
- 
+
     N = 2 * M
     wyn = 2 * P + 1
     t = np.linspace(0.0, tm, M)
@@ -90,7 +90,7 @@ def nilt(F, tm, M=256, P=2, alfa=0.0):
     c = alfa + 25.0 / NT
 
     s = c - 1j * omega * np.arange(N + wyn - 1)
-    Fsc = np.atleast_2d(F(s))                              
+    Fsc = np.atleast_2d(F(s))
     J = Fsc.shape[0]
 
     ft0 = np.fft.fft(Fsc[:, :N], axis=1)[:, :M]
@@ -99,7 +99,7 @@ def nilt(F, tm, M=256, P=2, alfa=0.0):
     ft[0] = ft0
     for n in range(N, N + wyn - 1):
         ft[n - N + 1] = Fsc[:, n][:, None] * np.exp(-1j * n * omega * t)[None, :]
-    ft1 = np.cumsum(ft, axis=0)                            
+    ft1 = np.cumsum(ft, axis=0)
 
     ft2 = np.zeros((wyn - 1, J, M), dtype=complex)
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -107,11 +107,11 @@ def nilt(F, tm, M=256, P=2, alfa=0.0):
             nouv = ft2 + 1.0 / np.diff(ft1, axis=0)
             ft2 = ft1[1:wyn - I]
             ft1 = nouv
-        res = (ft2 + 1.0 / np.diff(ft1, axis=0))[0]       
+        res = (ft2 + 1.0 / np.diff(ft1, axis=0))[0]
 
     f = 2.0 * np.real(res) - np.real(Fsc[:, 0])[:, None]
     f = np.exp(c * t)[None, :] / NT * f
-    f[:, 0] *= 2.0                                         
+    f[:, 0] *= 2.0
     return t, f
 # ----------------------------------------------------------------------------
 # 4. Validations légères
@@ -132,8 +132,8 @@ def val_nilt_scalaire():
     for nom, F, tm, ex, excl in tests:
         t, f = nilt(F, tm, M=256)
         err = np.abs(f[0] - ex(t))
-        masque = t > 0.05 * tm                             
-        if excl is not None:                             
+        masque = t > 0.05 * tm
+        if excl is not None:
             masque &= np.abs(t - 2.0) > excl
         print(f"    {nom:48s} erreur max (t > {0.05 * tm:.2f}) = {err[masque].max():.1e}")
 
@@ -188,17 +188,6 @@ def tracer(t, f, f_sans=None, chemin="huit_courbes.png"):
     fig.savefig(chemin, dpi=160)
     plt.close(fig)
 
-def resume(t, f):
-    print("\nRepères pour l'interprétation :")
-    for k in (1, 5):
-        i = np.argmax(np.abs(f[k]))
-        print(f"    {NOMS[k]}: extremum = {f[k, i] * 1e3:+7.2f} mV à t = {t[i] * 1e9:5.2f} ns")
-    for k in (0, 4):
-        i = np.argmax(f[k])
-        print(f"    {NOMS[k]}: maximum  = {f[k, i]:.3f} V à t = {t[i] * 1e9:5.2f} ns")
-    i1 = int(np.argmax(np.abs(f[4]) > 0.02 * np.max(np.abs(f[4]))))
-    print(f"    V1(L) dépasse 2 % de son maximum à t = {t[i1] * 1e9:.2f} ns")
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rapide", action="store_true", help="pas de validations")
@@ -217,7 +206,6 @@ def main():
     tracer(t, f, f0, os.path.join(args.sortie, "comparaison_effet_peau.png"))
     np.savetxt(os.path.join(args.sortie, "resultats.csv"),
                np.column_stack([t * 1e9, f.T]), delimiter=",", header="t_ns," + ",".join(NOMS), comments="")
-    resume(t, f)
     print(f"\nFichiers écrits dans '{args.sortie}/'.")
 
 if __name__ == "__main__":
