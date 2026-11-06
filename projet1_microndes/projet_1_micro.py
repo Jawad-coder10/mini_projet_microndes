@@ -1,13 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import argparse
 import os
 from dataclasses import dataclass, field
 import numpy as np
-# ----------------------------------------------------------------------------
-# 1. Paramètres de la ligne et des terminaisons (énoncé, Fig. 3)
-# ----------------------------------------------------------------------------
+
 @dataclass
 class Ligne:
     ell: float = 0.3048
@@ -33,9 +28,7 @@ def vs_temps(t, tr=TR, T=TT, td=TD):
     return (r(t) - r(t - tr) - r(t - T) + r(t - T - td)) / tr
 
 NOMS = ["V1(0)", "V2(0)", "I1(0)", "I2(0)", "V1(L)", "V2(L)", "I1(L)", "I2(L)"]
-# ----------------------------------------------------------------------------
-# 2. Les 8 expressions fréquentielles (tâche 1)
-# ----------------------------------------------------------------------------
+
 def reponse_lmc(s, lg, VS=vs_trapeze):
     s = np.asarray(s, dtype=complex)
     a = lg.Rdc + lg.b * np.sqrt(s)
@@ -77,9 +70,7 @@ def reponse_lmc(s, lg, VS=vs_trapeze):
     V1L = RL1 * I1L
     V2L = RL2 * I2L
     return np.vstack([V10, V20, I10, I20, V1L, V2L, I1L, I2L])
-# ----------------------------------------------------------------------------
-# 3. NILT de Brancik : FFT + algorithme epsilon (portage de `niltv`)
-# ----------------------------------------------------------------------------
+
 def nilt(F, tm, M=256, P=2, alfa=0.0):
 
     N = 2 * M
@@ -113,9 +104,7 @@ def nilt(F, tm, M=256, P=2, alfa=0.0):
     f = np.exp(c * t)[None, :] / NT * f
     f[:, 0] *= 2.0
     return t, f
-# ----------------------------------------------------------------------------
-# 4. Validations légères
-# ----------------------------------------------------------------------------
+
 def val_nilt_scalaire():
     print("\n[1] NILT seule, sur des transformées dont l'original est connu")
     print("    (l'origine et les discontinuités sont exclues, comme le précise Brancik)")
@@ -154,9 +143,7 @@ def val_regime_etabli(lg):
     print(f"    Sans effet de peau, on retrouve la valeur continue. Avec B donné, B*sqrt(pi f) = Rdc")
     print(f"    dès f = {fc:.0f} Hz : la résistance ne revient à Rdc qu'après des millisecondes,")
     print(f"    donc à 100 ns le courant est encore inférieur à la valeur continue (attendu).")
-# ----------------------------------------------------------------------------
-# 5. Simulation et tracé des 8 courbes
-# ----------------------------------------------------------------------------
+
 def simuler(lg, tm=40e-9, M=1024, P=2):
     return nilt(lambda s: reponse_lmc(s, lg), tm, M=M, P=P)
 
